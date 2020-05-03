@@ -3,16 +3,27 @@
 # Enhanced Nextion Library
 
 --------------------------------------------------------------------------------
-Jyrki Berg 4/5/2019 (https://github.com/jyberg)
+Jyrki Berg 5/3/2019 (https://github.com/jyberg) Version 1.0
+- Added support for multiple nextion displays
+  - Recommendation initialize nextion instance using Nextion::GetInstance command Harware and Software interfaces supported
+  - Nextion objects requires pointer to intance.
+  - Instance callback functiona must be initialized to instance object.
+- implementation divided to ./src ans ./include folders
+- STD_SUPPORT define replased with platform ESP8266 define if other platforms suppors needed std functionality add platform define with or (||)
+- TFT file upload added to behing of NEX_ENABLE_TFT_UPLOAD define
+- Documentation updated.
+- Examples updated.
+- platformIO development platformio.ini and .library.json added
+- Version numbering uses now Semantic Versioning 1.0.0 (https://semver.org/)
+  -Given a version number MAJOR.MINOR.PATCH, increment the:
+    MAJOR version when you make incompatible API changes,
+    MINOR version when you add functionality in a backwards compatible manner, and
+    PATCH version when you make backwards compatible bug fixes.
 
--Backward compatibility issue: functions timeout parameters datatype changed from uint32_t to size_t
-- getValue and getText doesn't work #9 corrected
 
 Jyrki Berg 8/14/2019
-
--Backward compatibility issue:
+-Backward compatinility issue:
 	- systemStartUpCallback function pointer name corrected to match Nextion functionality/documentation new name: nextionReadyCallback
-
 - Error code list updated (NexHardware.cpp)
 - nextionStartupCallback function added. Called when when Nextion has started or reset
 
@@ -39,7 +50,7 @@ Enhanced and corrected Nextion library version for Arduino/Esp8266/NodeMcu, base
   - Clear component
 - Added get component height/width function calls to NexObject  
 - examples Nextion editor projects corrected
-- C++ std library usage made optional, (e.g std::vector) See NexConfig.h #define STD_SUPPORT
+- C++ std library usage made optional, (e.g std::vector) See NexConfig.h #define NEX_STD_SUPPORT
 - C style versions added for functions that uses std::vector etc..
 
 Nextion serial instruction set see: https://www.itead.cc/wiki/Nextion_Instruction_Set or https://nextion.itead.cc/resources/documents/instruction-set/

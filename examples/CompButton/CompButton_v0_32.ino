@@ -17,14 +17,31 @@
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation; either version 2 of
  * the License, or (at your option) any later version.
+ * 
+ * @copyright 2019 Jyrki Berg
+ * 
  */
+#include <SoftwareSerial.h>
+
+//#define DEBUG_SERIAL_ENABLE
 
 #include "Nextion.h"
+
+
+//SoftwareSerial mySerial(D2, D1); // RX, TX
+
+/*
+* Declare Nextion instance
+*/
+//Nextion *next = Nextion::GetInstance(mySerial);
+//Nextion *next = Nextion::GetInstance(Serial);
+
 
 /*
  * Declare a button object [page id:0,component id:1, component name: "b0"]. 
  */
-NexButton b0(0, 1, "b0");
+//NexButton b0(next, 0, 1, "b0");
+NexButton b0( 0, 1, "b0");
 
 char buffer[100] = {0};
 
@@ -45,35 +62,39 @@ void b0PopCallback(void *ptr)
 {
     uint16_t len;
     uint16_t number;
-    NexButton *btn = (NexButton *)ptr;
     dbSerialPrintln("b0PopCallback");
-    dbSerialPrint("ptr=");
-    dbSerialPrintln((uint32_t)ptr); 
-    memset(buffer, 0, sizeof(buffer));
+    buffer[0]= 0;
 
     /* Get the text value of button component [the value is string type]. */
     len = sizeof(buffer);
-    btn->getText(buffer, len );
-    
-    number = atoi(buffer);
-    number += 1;
+    if(b0.getText(buffer, len ))
+    {        
+        number = atoi(buffer);
+        number += 1;
 
-    memset(buffer, 0, sizeof(buffer));
-    itoa(number, buffer, 10);
+        memset(buffer, 0, sizeof(buffer));
+        itoa(number, buffer, 10);
 
-    /* Set the text value of button component [the value is string type]. */
-    btn->setText(buffer);
+        /* Set the text value of button component [the value is string type]. */
+        b0.setText(buffer);
+    }
 }
 
 void setup(void)
 {    
+    Serial.begin(9600);
     /* Set the baudrate which is for debug and communicate with Nextion screen. */
-    nexInit();
+//    if(!next->nexInit())
+     if(!nexInit(19200))
+    {
+        Serial.println("nextion init fails"); 
+    }
+
+    buffer[0]= 0;
 
     /* Register the pop event callback function of the current button component. */
-    b0.attachPop(b0PopCallback, &b0);
-    
-    dbSerialPrintln("setup done"); 
+    b0.attachPop(b0PopCallback);
+    Serial.println("setup done"); 
 }
 
 void loop(void)
@@ -82,17 +103,6 @@ void loop(void)
      * When a pop or push event occured every time,
      * the corresponding component[right page id and component id] in touch event list will be asked.
      */
+//    next->nexLoop(nex_listen_list);
     nexLoop(nex_listen_list);
 }
-
-
-
-
-
-
-
-
-
-
-
-

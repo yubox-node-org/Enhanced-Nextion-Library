@@ -1,25 +1,30 @@
 # Release Notes
 
 --------------------------------------------------------------------------------
+# Release v1.0.0
+
+- Added support for multiple nextion displays
+  - Recommendation initialize nextion instance using Nextion::GetInstance command Harware and Software interfaces supported
+  - Nextion objects requires pointer to intance.
+  - Instance callback functiona must be initialized to instance object.
+- implementation divided to ./src ans ./include folders
+- STD_SUPPORT define replased with platform ESP8266 define if other platforms suppors needed std functionality add platform define with or (||)
+- TFT file upload added to behing of NEX_ENABLE_TFT_UPLOAD define
+- Documentation updated.
+- Examples updated.
+- platformIO development platformio.ini and .library.json added
+- Version numbering uses now Semantic Versioning 1.0.0 (https://semver.org/)
+  -Given a version number MAJOR.MINOR.PATCH, increment the:
+    MAJOR version when you make incompatible API changes,
+    MINOR version when you add functionality in a backwards compatible manner, and
+    PATCH version when you make backwards compatible bug fixes.
+
 # Release v0.11.5
-Fix timeout for non-32bit processors
-
-# Release v0.11.3
-- getValue and getText doesn't work #9 
-- timeout parameters chaned from uit32_t to size_t
-- timeout check uses millis instead of micros
-
-# Release v0.11.1
-- NexVariable::setValue datatype corrected #2
-- DEBUG_SERIAL_ENABLE changed to NEX_DEBUG_SERIAL_ENABLE
-- Serial.readBytes(...) implementation not used anymore, own implementation instead. Because of softwareSerial readBytes functionality is not reliable enough.
-
-# Release v0.11.0
  -Backward compatinility issue:
      -systemStartUpCallback function pointer name corrected to match Nextion functionality/documentation new name: nextionReadyCallback
      
  -Error code list updated (NexHardware.cpp)
-- nextionStartupCallback function added. Called when when Nextion has started or reset
+- nextionStartupCallback function added called when when Nextion has started or reset
 
 # Release v0.10.0
 
