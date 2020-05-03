@@ -1,8 +1,12 @@
 ﻿@mainpage Home Page
 
-# Enhanced Nextion Library
-
+# Enhanced Nextion Library (Draft multi instance support)
 --------------------------------------------------------------------------------
+Ongoing:
+- Examples updates
+- Testing
+- Documentation updates
+
 Jyrki Berg 5/3/2019 (https://github.com/jyberg) Version 1.0
 - Added support for multiple nextion displays
   - Recommendation initialize nextion instance using Nextion::GetInstance command Harware and Software interfaces supported
