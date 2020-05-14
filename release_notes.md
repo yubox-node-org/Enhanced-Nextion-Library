@@ -1,6 +1,9 @@
 # Release Notes
 
 --------------------------------------------------------------------------------
+# Release v1.1.0
+-NexText::appendText function added
+
 # Release v1.0.0
 
 - Added support for multiple nextion displays

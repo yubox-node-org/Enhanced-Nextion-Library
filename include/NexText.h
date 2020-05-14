@@ -75,6 +75,14 @@ public: /* methods */
     bool setText(const char *buffer);    
 	
     /**
+     * Append text to text attribute of component.
+     *
+     * @param buffer - text buffer terminated with '\0'. 
+     * @return true if success, false for failure. 
+     */
+    bool appendText(const char *buffer);
+
+    /**
      * Get bco attribute of component
      *
      * @param number - buffer storing data retur
