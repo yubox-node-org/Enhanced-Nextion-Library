@@ -75,7 +75,7 @@ public: /* methods */
 
         sprintf(buf, "add %u,%u,%u", getObjCid(), ch, ScaleToForm(value));
         sendCommand(buf);
-        return true;
+        return recvRetCommandFinished();
     }
 
     /**

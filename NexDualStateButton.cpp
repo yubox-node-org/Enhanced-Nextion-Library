@@ -28,7 +28,8 @@ bool NexDSButton::getValue(uint32_t *number)
     getObjGlobalPageName(cmd);
     cmd += ".val";
     sendCommand(cmd.c_str());
-    return recvRetNumber(number);
+    if (!recvRetNumber(number)) return false;
+    return recvRetCommandFinished();
 }
 
 bool NexDSButton::setValue(uint32_t number)
@@ -52,7 +53,8 @@ bool NexDSButton::getText(String &str)
     getObjGlobalPageName(cmd);
     cmd += ".txt";
     sendCommand(cmd.c_str());
-    return recvRetString(str);
+    if (!recvRetString(str)) return false;
+    return recvRetCommandFinished();
 }
 
 
@@ -63,7 +65,8 @@ bool NexDSButton::getText(char *buffer, uint16_t &len)
     getObjGlobalPageName(cmd);
     cmd += ".txt";
     sendCommand(cmd.c_str());
-    return recvRetString(buffer,len);
+    if (!recvRetString(buffer,len)) return false;
+    return recvRetCommandFinished();
 }
 
 bool NexDSButton::setText(const char *buffer)
