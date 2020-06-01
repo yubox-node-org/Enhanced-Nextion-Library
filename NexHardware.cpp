@@ -465,15 +465,17 @@ bool nexInit(const uint32_t baud)
     bool ret1 = false;
     bool ret2 = false;
 
-    nexSerial.begin(9600); // default baud, it is recommended that do not change defaul baud on Nextion, because it can forgot it on re-start
-    if(baud!=9600)
-    {
-        char cmd[14];
-        sprintf(cmd,"baud=%i",baud);
-        sendCommand(cmd);
-        delay(100);
-        nexSerial.begin(baud);
-        delay(20);
+    if (baud > 0) {
+        nexSerial.begin(9600); // default baud, it is recommended that do not change defaul baud on Nextion, because it can forgot it on re-start
+        if(baud!=9600)
+        {
+            char cmd[14];
+            sprintf(cmd,"baud=%i",baud);
+            sendCommand(cmd);
+            delay(100);
+            nexSerial.begin(baud);
+            delay(20);
+        }
     }
 
     sendCommand("bkcmd=3");
