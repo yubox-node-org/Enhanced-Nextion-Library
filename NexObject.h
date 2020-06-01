@@ -66,6 +66,8 @@ public: /* methods */
      */
     void printObjInfo(void);
 
+    bool setVisible(bool flag);
+
 protected: /* methods */
 
     /*
