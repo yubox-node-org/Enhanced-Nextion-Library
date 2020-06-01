@@ -65,6 +65,69 @@ void (*automaticWakeUpCallback)() =nullptr;
 void (*nextionReadyCallback)() =nullptr;
 void (*startSdUpgradeCallback)() =nullptr;
 
+static uint8_t _nextion_event_size[][2] = {
+    {NEX_RET_EVENT_NEXTION_STARTUP,     6},
+    {NEX_RET_EVENT_TOUCH_HEAD,          7},
+    {NEX_RET_CURRENT_PAGE_ID_HEAD,      5},
+    {NEX_RET_EVENT_POSITION_HEAD,       9},
+    {NEX_RET_EVENT_SLEEP_POSITION_HEAD, 9},
+    {NEX_RET_AUTOMATIC_SLEEP,           4},
+    {NEX_RET_AUTOMATIC_WAKE_UP,         4},
+    {NEX_RET_EVENT_NEXTION_READY,       1},
+    {NEX_RET_START_SD_UPGRADE,          1},
+    {0xFF,                              0}  // <-- fence, do not remove
+};
+
+/* Simple linked list queue of received but undelivered touch event packets */
+struct _nextion_touch_event
+{
+       struct _nextion_touch_event * next;
+       uint8_t event_data[10];
+};
+static struct _nextion_touch_event * _first = NULL;
+static struct _nextion_touch_event * _last = NULL;
+
+/* Push event data to back of queue */
+static int16_t _pushEventData(uint8_t c)
+{
+    unsigned int i;
+
+    do {
+        // Look up expected event size, return byte if unknown event
+        i = 0;
+        while (_nextion_event_size[i][1] != 0) {
+            if (_nextion_event_size[i][0] == c) break;
+            i++;
+        }
+        if (!_nextion_event_size[i][1]) return c;
+        uint8_t n = _nextion_event_size[i][1];
+
+        // New event packet, byte
+        struct _nextion_touch_event * e = new struct _nextion_touch_event;
+        e->next = NULL;
+        e->event_data[0] = c;
+        for (i = 1; i < n; i++) e->event_data[i] = nexSerial.read();
+
+        // Add to linked list
+        if (_last != NULL) _last->next = e;
+        _last = e;
+        if (_first == NULL) _first = e;
+
+        if (!nexSerial.available()) return -1;
+        c = nexSerial.read();
+    } while (true);
+}
+
+/* Remove event data from front of queue */
+static void _popEventData()
+{
+    struct _nextion_touch_event * e = _first;
+    if (e == NULL) return;
+    _first = _first->next;
+    delete e;
+    if (_first == NULL) _last = NULL;
+}
+
 /*
  * Receive unt32_t data. 
  * 
@@ -289,7 +352,24 @@ void sendRawByte(const uint8_t byte)
 size_t readBytes(uint8_t* buffer, size_t size, size_t timeout)
 {
     uint32_t start{millis()};
-    size_t avail{(size_t)nexSerial.available()};
+    size_t avail;
+    bool gotByte = false;
+
+    while(!gotByte && (millis()-start)<timeout) {
+        delayMicroseconds(10);
+        avail=nexSerial.available();
+        if (avail > 0) {
+            int16_t c = _pushEventData(nexSerial.read());
+            if (c != -1) {
+                gotByte = true;
+                *buffer = c;
+                ++buffer;
+                size--;
+            }
+            avail=nexSerial.available();
+        }
+    }
+
     while(size>avail && (millis()-start)<timeout)
     {
         delayMicroseconds(10);
@@ -301,17 +381,20 @@ size_t readBytes(uint8_t* buffer, size_t size, size_t timeout)
         *buffer=nexSerial.read();
         ++buffer;
     }
-    return read;
+    return read + (gotByte ? 1 : 0);
 }
 
 bool recvCommand(const uint8_t command, size_t timeout)
 {
     bool ret = false;
     uint8_t temp[4] = {0};
+    size_t rd;
 
-    if (sizeof(temp) != readBytes((uint8_t*)&temp, sizeof(temp), timeout))
+    rd = readBytes((uint8_t*)&temp, sizeof(temp), timeout);
+    if (sizeof(temp) != rd)
     {
-        dbSerialPrintln("recv command timeout");
+        dbSerial.printf("recv command timeout: got %d bytes, expected %d\r\n",
+            rd, sizeof(temp));
         ret = false;
     }
     else
@@ -407,48 +490,40 @@ bool nexInit(const uint32_t baud)
 
 void nexLoop(NexTouch *nex_listen_list[])
 {
-    static uint8_t __buffer[10];
-    
-    while (nexSerial.available())
+    while (_first != NULL || nexSerial.available())
     {
-        __buffer[0] = nexSerial.read();
-        switch(__buffer[0])
-        {
+        int16_t c = -1;
+
+        if (_first == NULL) c = _pushEventData(nexSerial.read());
+
+        if (_first != NULL) {
+            switch(_first->event_data[0]) {
             case NEX_RET_EVENT_NEXTION_STARTUP:
             {
-                if(5==readBytes(&__buffer[1],5,200))
+                if (0x00 == _first->event_data[1] && 0x00 == _first->event_data[2] && 0xFF == _first->event_data[3] && 0xFF == _first->event_data[4] && 0xFF == _first->event_data[5])
                 {
-                    if (0x00 == __buffer[1] && 0x00 == __buffer[2] && 0xFF == __buffer[3] && 0xFF == __buffer[4] && 0xFF == __buffer[5])
+                    if(nextionStartupCallback!=nullptr)
                     {
-                        if(nextionStartupCallback!=nullptr)
-                        {
-                            nextionStartupCallback();
-                        }
+                        nextionStartupCallback();
                     }
                 }
                 break;
             }
             case NEX_RET_EVENT_TOUCH_HEAD:
             {
-                if(6==readBytes(&__buffer[1],6,200))
+                if (0xFF == _first->event_data[4] && 0xFF == _first->event_data[5] && 0xFF == _first->event_data[6])
                 {
-                    if (0xFF == __buffer[4] && 0xFF == __buffer[5] && 0xFF == __buffer[6])
-                    {
-                        NexTouch::iterate(nex_listen_list, __buffer[1], __buffer[2], __buffer[3]);
-                    }
+                    NexTouch::iterate(nex_listen_list, _first->event_data[1], _first->event_data[2], _first->event_data[3]);
                 }
                 break;
             }
             case NEX_RET_CURRENT_PAGE_ID_HEAD:
             {
-                if(4==readBytes(&__buffer[1],4,200))
+                if (0xFF == _first->event_data[2] && 0xFF == _first->event_data[3] && 0xFF == _first->event_data[4])
                 {
-                    if (0xFF == __buffer[2] && 0xFF == __buffer[3] && 0xFF == __buffer[4])
+                    if(currentPageIdCallback!=nullptr)
                     {
-                        if(currentPageIdCallback!=nullptr)
-                        {
-                            currentPageIdCallback(__buffer[1]);
-                        }
+                        currentPageIdCallback(_first->event_data[1]);
                     }
                 }
                 break;
@@ -456,20 +531,15 @@ void nexLoop(NexTouch *nex_listen_list[])
             case NEX_RET_EVENT_POSITION_HEAD:
             case NEX_RET_EVENT_SLEEP_POSITION_HEAD:
             {
-                if(8==readBytes(&__buffer[1],8,200))
-                {                  
-                    if (0xFF == __buffer[6] && 0xFF == __buffer[7] && 0xFF == __buffer[8])
+                if (0xFF == _first->event_data[6] && 0xFF == _first->event_data[7] && 0xFF == _first->event_data[8])
+                {
+                    if(_first->event_data[0] == NEX_RET_EVENT_POSITION_HEAD && touchCoordinateCallback!=nullptr)
                     {
-                        if(__buffer[0] == NEX_RET_EVENT_POSITION_HEAD && touchCoordinateCallback!=nullptr)
-                        {
-                                
-                            touchCoordinateCallback(((int16_t)__buffer[2] << 8) | (__buffer[1]), ((int16_t)__buffer[4] << 8) | (__buffer[3]),__buffer[5]);
-                        }
-                        else if(__buffer[0] == NEX_RET_EVENT_SLEEP_POSITION_HEAD && touchCoordinateCallback!=nullptr)
-                        {
-                                
-                            touchEventInSleepModeCallback(((int16_t)__buffer[2] << 8) | (__buffer[1]), ((int16_t)__buffer[4] << 8) | (__buffer[3]),__buffer[5]);
-                        }
+                        touchCoordinateCallback(((int16_t)_first->event_data[2] << 8) | (_first->event_data[1]), ((int16_t)_first->event_data[4] << 8) | (_first->event_data[3]),_first->event_data[5]);
+                    }
+                    else if(_first->event_data[0] == NEX_RET_EVENT_SLEEP_POSITION_HEAD && touchCoordinateCallback!=nullptr)
+                    {
+                        touchEventInSleepModeCallback(((int16_t)_first->event_data[2] << 8) | (_first->event_data[1]), ((int16_t)_first->event_data[4] << 8) | (_first->event_data[3]),_first->event_data[5]);
                     }
                 }
                 break;
@@ -477,18 +547,15 @@ void nexLoop(NexTouch *nex_listen_list[])
             case NEX_RET_AUTOMATIC_SLEEP:
             case NEX_RET_AUTOMATIC_WAKE_UP:
             {
-                if(3==readBytes(&__buffer[1],3,200))
+                if (0xFF == _first->event_data[1] && 0xFF == _first->event_data[2] && 0xFF == _first->event_data[3])
                 {
-                    if (0xFF == __buffer[1] && 0xFF == __buffer[2] && 0xFF == __buffer[3])
+                    if(_first->event_data[0]==NEX_RET_AUTOMATIC_SLEEP && automaticSleepCallback!=nullptr)
                     {
-                        if(__buffer[0]==NEX_RET_AUTOMATIC_SLEEP && automaticSleepCallback!=nullptr)
-                        {
-                            automaticSleepCallback();
-                        }
-                        else if(__buffer[0]==NEX_RET_AUTOMATIC_WAKE_UP && automaticWakeUpCallback!=nullptr)
-                        {
-                            automaticWakeUpCallback();
-                        }
+                        automaticSleepCallback();
+                    }
+                    else if(_first->event_data[0]==NEX_RET_AUTOMATIC_WAKE_UP && automaticWakeUpCallback!=nullptr)
+                    {
+                        automaticWakeUpCallback();
                     }
                 }
                 break;
@@ -509,19 +576,17 @@ void nexLoop(NexTouch *nex_listen_list[])
                 }
                 break;
             }
-            default:
-            {
-                // unnoun data clean buffer.
-                dbSerialPrint("Unexpected data received hex: ");
-                while (nexSerial.available())
-                {
-                    dbSerialPrintByte(__buffer[0]);
-                    __buffer[0]=nexSerial.read();
-                    yield();
-                }
-                dbSerialPrintln(__buffer[0]);
-                break;              
-            }
-        };      
+            };
+
+            _popEventData();
+        } else if (c != -1) {
+            // unnoun data clean buffer.
+            dbSerialPrint("Unexpected data received hex: [");
+            do {
+                dbSerialPrintByte((uint8_t)c);
+                c = nexSerial.available() ? nexSerial.read() : -1;
+            } while (c != -1);
+            dbSerialPrintln("]");
+        }
     }
 }
