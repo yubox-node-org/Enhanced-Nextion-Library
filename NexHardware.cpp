@@ -393,8 +393,10 @@ bool recvCommand(const uint8_t command, size_t timeout)
     rd = readBytes((uint8_t*)&temp, sizeof(temp), timeout);
     if (sizeof(temp) != rd)
     {
+#ifdef dbSerial
         dbSerial.printf("recv command timeout: got %d bytes, expected %d\r\n",
             rd, sizeof(temp));
+#endif
         ret = false;
     }
     else
