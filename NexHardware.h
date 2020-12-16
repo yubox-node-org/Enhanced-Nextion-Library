@@ -165,7 +165,7 @@ bool recvCommand(const uint8_t command, size_t timeout);
  * @retval false - failed. 
  *
  */
-bool recvRetCommandFinished(size_t timeout = 200);
+bool recvRetCommandFinished(size_t timeout = 400);
 
 /*
  * Transpared data mode setup successfully 
