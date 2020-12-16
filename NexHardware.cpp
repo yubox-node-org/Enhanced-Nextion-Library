@@ -322,9 +322,24 @@ void sendCommand(const char* cmd)
     // empty in buffer for clean responce
     while (nexSerial.available())
     {
-        nexSerial.read();
+        //nexSerial.read();
+
+        int16_t c = _pushEventData(nexSerial.read());
+        if (c != -1) {
+            // Skip whatever it is that remains in the buffer by looking for 
+            // end-of-packet marker
+            //Serial.printf("| %02x", c);
+            auto n = 3;
+            while (n > 0) {
+                c = nexSerial.read();
+                //Serial.printf(" %02x", c);
+                if (c == -1) break;
+                if (c == 0xff) n--; else n = 3;
+            }
+        }
+
     }
-    
+
     nexSerial.print(cmd);
     nexSerial.write(0xFF);
     nexSerial.write(0xFF);
