@@ -371,7 +371,6 @@ size_t readBytes(uint8_t* buffer, size_t size, size_t timeout)
     bool gotByte = false;
 
     while(!gotByte && (millis()-start)<timeout) {
-        delayMicroseconds(10);
         avail=nexSerial.available();
         if (avail > 0) {
             int16_t c = _pushEventData(nexSerial.read());
@@ -382,13 +381,16 @@ size_t readBytes(uint8_t* buffer, size_t size, size_t timeout)
                 size--;
             }
             avail=nexSerial.available();
+        } else {
+            // Ensure vTaskDelay is called on ESP32
+            delay(1);
         }
     }
 
     while(size>avail && (millis()-start)<timeout)
     {
-        delayMicroseconds(10);
         avail=nexSerial.available();
+        if (!avail) delay(1);
     }
     size_t read=min(size,avail);
     for(size_t i{read}; i;--i)
